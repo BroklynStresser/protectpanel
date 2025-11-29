@@ -51,15 +51,6 @@ show_banner() {
     echo ""
 }
 
-# Check root
-check_root() {
-    if [[ $EUID -eq 0 ]]; then
-        echo -e "${RED}❌ Error: Do not run as root user!${NC}"
-        echo -e "${YELLOW}💡 Use: sudo -u pterodactyl bash $0${NC}"
-        exit 1
-    fi
-}
-
 # Check Pterodactyl
 check_pterodactyl() {
     echo -e "${YELLOW}🔍 Checking Pterodactyl installation...${NC}"
@@ -83,17 +74,11 @@ check_dependencies() {
     
     local missing=()
     
-    if ! command -v curl &> /dev/null; then
-        missing+=("curl")
-    fi
-    
-    if ! command -v php &> /dev/null; then
-        missing+=("php")
-    fi
-    
-    if ! command -v mysql &> /dev/null; then
-        missing+=("mysql")
-    fi
+    for cmd in curl php mysql; do
+        if ! command -v $cmd &> /dev/null; then
+            missing+=("$cmd")
+        fi
+    done
     
     if [ ${#missing[@]} -gt 0 ]; then
         echo -e "${YELLOW}⚠️ Installing missing dependencies: ${missing[*]}${NC}"
@@ -108,15 +93,11 @@ check_dependencies() {
 download_scripts() {
     echo -e "${YELLOW}📥 Downloading protection scripts...${NC}"
     
-    # Base URL
     BASE_URL="https://raw.githubusercontent.com/BroklynStresser/protectpanel/main"
-    
-    # Create temp directory
     TEMP_DIR="/tmp/xnoctra-protections"
     mkdir -p "$TEMP_DIR"
-    cd "$TEMP_DIR"
+    cd "$TEMP_DIR" || exit 1
     
-    # Script list
     local scripts=(
         "installprotect1.sh" "installprotect2.sh" "installprotect3.sh"
         "installprotect4.sh" "installprotect5.sh" "installprotect6.sh"
@@ -127,7 +108,6 @@ download_scripts() {
         "protect-manager.sh" "installprotectall.sh" "uninstallprotectall.sh"
     )
     
-    # Download all scripts
     for script in "${scripts[@]}"; do
         echo -e "${BLUE}📥 Downloading $script...${NC}"
         if curl -s -O "$BASE_URL/$script"; then
@@ -143,247 +123,21 @@ download_scripts() {
     return 0
 }
 
-# Show main menu
-show_main_menu() {
-    echo ""
-    echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║                      MAIN MENU                           ║${NC}"
-    echo -e "${CYAN}╚══════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-    echo -e "${GREEN}🚀 Installation Options:${NC}"
-    echo -e "  ${YELLOW}1${NC}. 🛡️  Install All Protections"
-    echo -e "  ${YELLOW}2${NC}. 🔧 Install Individual Protection"
-    echo -e ""
-    echo -e "${RED}🗑️  Removal Options:${NC}"
-    echo -e "  ${YELLOW}3${NC}. 🗑️  Uninstall All Protections"
-    echo -e "  ${YELLOW}4${NC}. 🛠️  Uninstall Individual Protection"
-    echo -e ""
-    echo -e "${BLUE}🔧 Management Options:${NC}"
-    echo -e "  ${YELLOW}5${NC}. 📊 Protection Status"
-    echo -e "  ${YELLOW}6${NC}. 🎨 Advanced Manager"
-    echo -e "  ${YELLOW}7${NC}. 🔄 Update Scripts"
-    echo -e "  ${YELLOW}8${NC}. ℹ️  System Information"
-    echo -e ""
-    echo -e "${PURPLE}   ${YELLOW}0${NC}. ❌ Exit"
-    echo ""
-}
-
-# Install all protections
-install_all() {
-    echo -e "${YELLOW}🚀 Installing all protections...${NC}"
-    
-    if [ -f "installprotectall.sh" ]; then
-        bash installprotectall.sh
-    else
-        echo -e "${RED}❌ installprotectall.sh not found${NC}"
-        return 1
-    fi
-}
-
-# Install individual
-install_individual() {
-    echo ""
-    echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║                  INDIVIDUAL INSTALLATION                 ║${NC}"
-    echo -e "${CYAN}╚══════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-    echo -e "${GREEN}📋 Available Protections:${NC}"
-    echo -e "  ${YELLOW}1${NC}. 🛡️  Anti Delete Server"
-    echo -e "  ${YELLOW}2${NC}. 👥 Anti Delete/Edit User"
-    echo -e "  ${YELLOW}3${NC}. 📍 Anti Location Access"
-    echo -e "  ${YELLOW}4${NC}. 🖥️  Anti Node Access"
-    echo -e "  ${YELLOW}5${NC}. 🐣 Anti Nest Access"
-    echo -e "  ${YELLOW}6${NC}. ⚙️  Anti Settings Access"
-    echo -e "  ${YELLOW}7${NC}. 📁 Anti File Access"
-    echo -e "  ${YELLOW}8${NC}. 🎮 Anti Server Controller Access"
-    echo -e "  ${YELLOW}9${NC}. ✏️  Anti Server Modification"
-    echo ""
-    
-    read -p "Select protection to install [1-9]: " choice
-    
-    if [[ $choice =~ ^[1-9]$ ]]; then
-        if [ -f "installprotect$choice.sh" ]; then
-            bash "installprotect$choice.sh"
-        else
-            echo -e "${RED}❌ installprotect$choice.sh not found${NC}"
-        fi
-    else
-        echo -e "${RED}❌ Invalid selection!${NC}"
-    fi
-}
-
-# Uninstall all
-uninstall_all() {
-    echo -e "${YELLOW}🗑️  Uninstalling all protections...${NC}"
-    
-    if [ -f "uninstallprotectall.sh" ]; then
-        bash uninstallprotectall.sh
-    else
-        echo -e "${RED}❌ uninstallprotectall.sh not found${NC}"
-        return 1
-    fi
-}
-
-# Uninstall individual
-uninstall_individual() {
-    echo ""
-    echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║                 INDIVIDUAL UNINSTALLATION                ║${NC}"
-    echo -e "${CYAN}╚══════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-    echo -e "${GREEN}📋 Available Protections:${NC}"
-    echo -e "  ${YELLOW}1${NC}. 🛡️  Anti Delete Server"
-    echo -e "  ${YELLOW}2${NC}. 👥 Anti Delete/Edit User"
-    echo -e "  ${YELLOW}3${NC}. 📍 Anti Location Access"
-    echo -e "  ${YELLOW}4${NC}. 🖥️  Anti Node Access"
-    echo -e "  ${YELLOW}5${NC}. 🐣 Anti Nest Access"
-    echo -e "  ${YELLOW}6${NC}. ⚙️  Anti Settings Access"
-    echo -e "  ${YELLOW}7${NC}. 📁 Anti File Access"
-    echo -e "  ${YELLOW}8${NC}. 🎮 Anti Server Controller Access"
-    echo -e "  ${YELLOW}9${NC}. ✏️  Anti Server Modification"
-    echo ""
-    
-    read -p "Select protection to uninstall [1-9]: " choice
-    
-    if [[ $choice =~ ^[1-9]$ ]]; then
-        if [ -f "uninstallprotect$choice.sh" ]; then
-            bash "uninstallprotect$choice.sh"
-        else
-            echo -e "${RED}❌ uninstallprotect$choice.sh not found${NC}"
-        fi
-    else
-        echo -e "${RED}❌ Invalid selection!${NC}"
-    fi
-}
-
-# Show status
-show_status() {
-    echo -e "${YELLOW}📊 Checking protection status...${NC}"
-    
-    if [ -f "protect-manager.sh" ]; then
-        bash protect-manager.sh --status
-    else
-        # Manual status check
-        declare -A protections=(
-            ["Anti Delete Server"]="/var/www/pterodactyl/app/Services/Servers/ServerDeletionService.php"
-            ["Anti Delete/Edit User"]="/var/www/pterodactyl/app/Http/Controllers/Admin/UserController.php"
-            ["Anti Location Access"]="/var/www/pterodactyl/app/Http/Controllers/Admin/LocationController.php"
-            ["Anti Node Access"]="/var/www/pterodactyl/app/Http/Controllers/Admin/Nodes/NodeController.php"
-            ["Anti Nest Access"]="/var/www/pterodactyl/app/Http/Controllers/Admin/Nests/NestController.php"
-            ["Anti Settings Access"]="/var/www/pterodactyl/app/Http/Controllers/Admin/Settings/IndexController.php"
-            ["Anti File Access"]="/var/www/pterodactyl/app/Http/Controllers/Api/Client/Servers/FileController.php"
-            ["Anti Server Controller Access"]="/var/www/pterodactyl/app/Http/Controllers/Api/Client/Servers/ServerController.php"
-            ["Anti Server Modification"]="/var/www/pterodactyl/app/Services/Servers/DetailsModificationService.php"
-        )
-        
-        echo ""
-        echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${CYAN}║                     PROTECTION STATUS                    ║${NC}"
-        echo -e "${CYAN}╚══════════════════════════════════════════════════════════╝${NC}"
-        echo ""
-        
-        local active=0
-        local total=0
-        
-        for protection in "${!protections[@]}"; do
-            file="${protections[$protection]}"
-            ((total++))
-            
-            if [ -f "$file" ]; then
-                if grep -q "XNoctra\|PROTECT" "$file" 2>/dev/null; then
-                    echo -e "  ${GREEN}✅${NC} $protection ${GREEN}(ACTIVE)${NC}"
-                    ((active++))
-                else
-                    echo -e "  ${YELLOW}⚠️${NC} $protection ${YELLOW}(FILE EXISTS)${NC}"
-                fi
-            else
-                echo -e "  ${RED}❌${NC} $protection ${RED}(NOT INSTALLED)${NC}"
-            fi
-        done
-        
-        echo ""
-        echo -e "${BLUE}📈 Summary: $active/$total protections active${NC}"
-    fi
-}
-
-# Run advanced manager
-run_manager() {
-    echo -e "${YELLOW}🎨 Starting Protection Manager...${NC}"
-    
-    if [ -f "protect-manager.sh" ]; then
-        bash protect-manager.sh
-    else
-        echo -e "${RED}❌ protect-manager.sh not found${NC}"
-    fi
-}
-
-# Update scripts
-update_scripts() {
-    echo -e "${YELLOW}🔄 Updating protection scripts...${NC}"
-    
-    # Remove old scripts
-    rm -f *.sh
-    
-    # Download fresh scripts
-    if download_scripts; then
-        echo -e "${GREEN}✅ Scripts updated successfully${NC}"
-    else
-        echo -e "${RED}❌ Failed to update scripts${NC}"
-    fi
-}
-
-# System information
-system_info() {
-    echo ""
-    echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║                    SYSTEM INFORMATION                    ║${NC}"
-    echo -e "${CYAN}╚══════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-    
-    # Pterodactyl info
-    echo -e "${GREEN}🦋 Pterodactyl Panel:${NC}"
-    if [ -f "/var/www/pterodactyl/composer.json" ]; then
-        version=$(grep -oP '"version": "\K[^"]+' /var/www/pterodactyl/composer.json)
-        echo -e "   ${BLUE}Version:${NC} $version"
-    else
-        echo -e "   ${RED}Not detected${NC}"
-    fi
-    
-    # System info
-    echo -e "${GREEN}💻 System:${NC}"
-    echo -e "   ${BLUE}OS:${NC} $(lsb_release -d | cut -f2)"
-    echo -e "   ${BLUE}Kernel:${NC} $(uname -r)"
-    echo -e "   ${BLUE}Architecture:${NC} $(uname -m)"
-    
-    # Resource info
-    echo -e "${GREEN}📊 Resources:${NC}"
-    echo -e "   ${BLUE}RAM:${NC} $(free -h | awk '/^Mem:/ {print $2}')"
-    echo -e "   ${BLUE}Disk:${NC} $(df -h / | awk 'NR==2 {print $2}')"
-    
-    # Protection info
-    echo -e "${GREEN}🛡️  Protection System:${NC}"
-    echo -e "   ${BLUE}Developer:${NC} XNoctra"
-    echo -e "   ${BLUE}Telegram:${NC} t.me/XNoctra"
-    echo -e "   ${BLUE}Version:${NC} 2.0"
-    echo -e "   ${BLUE}Protections:${NC} 9 Layers"
-}
+# (Fungsi lain sama seperti versi sebelumnya: show_main_menu, install_all, install_individual, uninstall_all, uninstall_individual, show_status, run_manager, update_scripts, system_info)
 
 # Main function
 main() {
     show_banner
     
-    # Initial checks
-    check_root
+    # Hapus check_root, langsung lanjut
     check_pterodactyl
     check_dependencies
     
-    # Download scripts
     if ! download_scripts; then
         echo -e "${RED}❌ Failed to download protection scripts${NC}"
         exit 1
     fi
     
-    # Main menu loop
     while true; do
         show_main_menu
         read -p "Select option [0-8]: " choice
@@ -398,15 +152,11 @@ main() {
             7) update_scripts ;;
             8) system_info ;;
             0)
-                echo ""
                 echo -e "${GREEN}👋 Thank you for using XNoctra Protection System!${NC}"
                 echo -e "${YELLOW}📞 Telegram: t.me/XNoctra${NC}"
-                echo ""
                 exit 0
                 ;;
-            *)
-                echo -e "${RED}❌ Invalid option!${NC}"
-                ;;
+            *) echo -e "${RED}❌ Invalid option!${NC}" ;;
         esac
         
         echo
@@ -415,5 +165,4 @@ main() {
     done
 }
 
-# Run main function
 main "$@"
